@@ -1,126 +1,44 @@
-# Semantic Image Search CLI (sisi)
+# sisi — Semantic Image Search CLI
 
-CLI tool for semantic image search, locally without using third party APIs.
+Local Apple Photo semantic image search using [CLIP](https://github.com/openai/CLIP) embeddings. Also allows for date search and album creation. This is heavily modified fork of [@frost-beta/sisi](https://github.com/nickochar/sisi).
 
-Powered by [node-mlx](https://github.com/frost-beta/node-mlx), a machine
-learning framework for Node.js.
+This will require a Mac with Apple Silicon (GPU) or x64 Mac/Linux.
 
-https://github.com/user-attachments/assets/66e6e437-c27b-48cf-80cc-a5a0c8c0bdfb
+## Install
 
-## Supported platforms
+```
+git clone https://github.com/p3rciv3l/sisi.git
+cd sisi
+npm install
+```
 
-GPU support:
+Then symlink the binary:
 
-* Macs with Apple Silicon
-
-CPU support:
-
-* x64 Macs
-* x64/arm64 Linux
-
-(No support for Windows yet, but I might try to make MLX work on it in future)
-
-For platforms without GPU support, the index command will be much slower, and
-will take many hours indexing tens of thousands of images. The index is only
-built for new and modified files, so once your have done the initial building,
-updating index for new images will be much easier.
+```
+ln -sf "$(pwd)/dist/cli.js" /opt/homebrew/bin/sisi
+```
 
 ## Usage
 
-Install:
-
-```console
-npm install -g @frost-beta/sisi
+```
+sisi index <dir>                          # Build/update CLIP index for a directory
+sisi search "<query>"                     # Search and view results in browser
+sisi search "<query>" --print             # Print results to stdout
+sisi search "<query>" --date 6/24,8/24    # Filter to a date range (M/YY or M/D/YY)
+sisi search "<query>" --date 1/25         # From a date to present
+sisi search "<query>" --in ~/Pictures/    # Search within a specific directory
+sisi search "<query>" --max 50            # Limit number of results (default 20)
+sisi album "<query>"                      # Create an Apple Photos album from results
+sisi album "<query>" --date 6/24,8/24     # Album with date filter
+sisi list-index                           # Show indexed directories
+sisi remove-index <dir>                   # Remove index for a directory
 ```
 
-CLI:
+Clicking a result in the browser opens that photo in Apple Photos.
 
-```console
-━━━ Semantic Image Search CLI - 0.0.1-dev ━━━━━━━━━━━━━━━━
+## How it works
 
-  $ sisi <command>
-
-━━━ General commands ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  sisi index <target>
-    Build or update index for images under target directory.
-
-  sisi list-index
-    List the directories in the index.
-
-  sisi remove-index <target>
-    Remove index for all items under target directory.
-
-  sisi search [--in #0] [--max #0] [--print] [--date #0] <query>
-    Search the query string from indexed images.
-
-  sisi album [--in #0] [--max #0] [--date #0] <query>
-    Search images and create an Apple Photos album with the results.
-```
-
-## Examples
-
-Build index for `~/Pictures/`:
-
-```console
-sisi index ~/Pictures/
-```
-
-Search pictures from all indexed images:
-
-```console
-sisi search 'cat jumping'
-```
-
-Search from the `~/Pictures/` directory:
-
-```console
-sisi search cat --in ~/Pictures/
-```
-
-Search images with image:
-
-```console
-sisi search https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg
-```
-
-It works with local files too:
-
-```console
-sisi search file:///Users/Your/Pictures/cat.jpg
-```
-
-Filter by date range using `--date` with `M/YY` or `M/D/YY` format:
-
-```console
-sisi search "beach" --date 6/24,8/24
-```
-
-Omit the end date to search from a date to the present:
-
-```console
-sisi search "snow" --date 1/25
-```
-
-Create an Apple Photos album from search results:
-
-```console
-sisi album "hiking trip" --date 7/24,7/24 --max 50
-```
-
-## Under the hood
-
-The index is built by computing the embeddings of images using the [CLIP
-model](https://github.com/openai/CLIP), and then stored in a binary JSON file.
-
-Searching the images is computing cosine similarities between the query string
-and the indexed embeddings. There is no database involved here, everytime you do
-a search the computation is done for all the embeddings stored, which is very
-fast even when you have tens of thousands of pictures.
-
-The JavaScript implementation of the CLIP model is in a separate module:
-[frost-beta/clip](https://github.com/frost-beta/clip).
+`sisi index` computes CLIP embeddings for every image in a directory and stores them in a binary index file. `sisi search` computes cosine similarity between your query and all stored embeddings. The CLIP model is downloaded automatically on first run and you can re-index your photos by deletingthe embeddings; each indexing takes ~2 hours assuming you have 80k photos.
 
 ## License
-
 MIT
