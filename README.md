@@ -1,4 +1,4 @@
-# sisi — Semantic Image Search CLI
+# Search Apple Photos Using OpenAI's CLIP Model
 
 Local Apple Photo semantic image search using [CLIP](https://github.com/openai/CLIP) embeddings. Also allows for date search and album creation. This is heavily modified fork of [@frost-beta/sisi](https://github.com/nickochar/sisi).
 
