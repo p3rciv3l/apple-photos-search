@@ -13,6 +13,7 @@ export declare class SearchCommand extends Command {
     target: string;
     max: string;
     print: boolean;
+    date: string | undefined;
     execute(): Promise<void>;
 }
 export declare class ListIndexCommand extends Command {
@@ -24,5 +25,14 @@ export declare class RemoveIndexCommand extends Command {
     static paths: string[][];
     static usage: import("clipanion").Usage;
     target: string;
+    execute(): Promise<void>;
+}
+export declare class AlbumCommand extends Command {
+    static paths: string[][];
+    static usage: import("clipanion").Usage;
+    query: string;
+    target: string;
+    max: string;
+    date: string | undefined;
     execute(): Promise<void>;
 }

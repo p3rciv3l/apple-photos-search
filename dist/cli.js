@@ -3,51 +3,54 @@ import { Builtins, Cli, Command, Option } from 'clipanion';
 import { execFile as execFileCb } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolve } from 'node:path';
-import { homedir } from 'node:os';
-import { existsSync } from 'node:fs';
 import { getPackageJson, shortPath } from './fs.js';
-import { index, search, listIndex, removeIndex } from './sisi.js';
+import { index, search, listIndex, removeIndex, getIndexedImages } from './sisi.js';
+import { parseLocationIntent, getResultUuid, filterResultsByLocation } from './location.js';
+import { getPhotoMetadata, findLocationMatches } from './location-db.js';
 import { presentResults } from './search.js';
 
 const execFile = promisify(execFileCb);
 
-const PHOTOS_DB_PATH = `${homedir()}/Pictures/Photos Library.photoslibrary/database/Photos.sqlite`;
-
-async function queryPhotosDb(sql) {
-    if (!existsSync(PHOTOS_DB_PATH)) return [];
-    try {
-        const { stdout } = await execFile('sqlite3', ['-json', PHOTOS_DB_PATH, sql]);
-        return JSON.parse(stdout);
-    } catch {
-        return [];
-    }
-}
-
-async function getPhotoMetadata(uuids) {
-    if (uuids.length === 0) return new Map();
-    const quoted = uuids.map(u => `'${u}'`).join(',');
-    const rows = await queryPhotosDb(`
-        SELECT ZUUID, ZTRASHEDSTATE, ZHIDDEN, ZDATECREATED,
-               ZLATITUDE, ZLONGITUDE, ZFILENAME
-        FROM ZASSET
-        WHERE ZUUID IN (${quoted})
-    `);
-    const map = new Map();
-    for (const row of rows) {
-        // Apple Core Data epoch is 2001-01-01
-        const date = row.ZDATECREATED != null
-            ? new Date((row.ZDATECREATED + 978307200) * 1000)
-            : null;
-        map.set(row.ZUUID, {
-            trashed: row.ZTRASHEDSTATE === 1,
-            hidden: row.ZHIDDEN === 1,
-            date,
-            lat: row.ZLATITUDE,
-            lon: row.ZLONGITUDE,
-            filename: row.ZFILENAME,
+async function searchWithMetadata(query, { maxResults, targetDir }) {
+    const intent = await parseLocationIntent(query, (locationQuery) => findLocationMatches(locationQuery));
+    const semanticQuery = intent.semanticQuery;
+    if (!semanticQuery && !intent.locationUuids?.size) return;
+    if (semanticQuery) {
+        const searchLimit = intent.locationUuids?.size
+            ? Math.max(maxResults * 25, maxResults)
+            : maxResults;
+        let results = await search(semanticQuery, {
+            maxResults: searchLimit,
+            targetDir,
         });
+        if (!results) return;
+        if (intent.locationUuids?.size) {
+            results = filterResultsByLocation(results, intent.locationUuids)
+                .slice(0, maxResults);
+        }
+        return {
+            results,
+            queryForDisplay: query,
+            semanticQuery,
+            locationQuery: intent.locationQuery,
+        };
     }
-    return map;
+    if (intent.locationUuids?.size) {
+        const images = await getIndexedImages(targetDir);
+        const results = images
+            .map(image => ({ filePath: image.filePath, score: 100 }))
+            .filter(result => {
+                const uuid = getResultUuid(result);
+                return uuid ? intent.locationUuids.has(uuid) : false;
+            })
+            .slice(0, maxResults);
+        return {
+            results,
+            queryForDisplay: query,
+            semanticQuery: '',
+            locationQuery: intent.locationQuery,
+        };
+    }
 }
 
 function parseDatePart(str, isEnd) {
@@ -114,6 +117,9 @@ function formatMeta(meta) {
             year: 'numeric', month: 'short', day: 'numeric',
         }));
     }
+    if (meta.title) {
+        parts.push(meta.subtitle ? `${meta.title} / ${meta.subtitle}` : meta.title);
+    }
     if (meta.lat != null && meta.lon != null
         && (meta.lat !== 0 || meta.lon !== 0)
         && meta.lat !== -180 && meta.lon !== -180) {
@@ -174,10 +180,12 @@ export class SearchCommand extends Command {
     date = Option.String('--date', { description: 'Date range as start,end (e.g. 3/1/24,6/1/24).' });
     async execute() {
         const dateRange = this.date ? parseDateRange(this.date) : null;
-        const results = await search(this.query, {
-            maxResults: dateRange ? parseInt(this.max) * 10 : parseInt(this.max),
+        const max = parseInt(this.max);
+        const searchResponse = await searchWithMetadata(this.query, {
+            maxResults: dateRange ? max * 10 : max,
             targetDir: this.target,
         });
+        const results = searchResponse?.results;
         if (!results) {
             const target = this.target ?? '<target>';
             console.error(`No images in index, please run "sisi index ${target}" first.`);
@@ -186,7 +194,7 @@ export class SearchCommand extends Command {
         let filtered = results;
         if (dateRange) {
             filtered = await filterResultsByDate(results, dateRange);
-            filtered = filtered.slice(0, parseInt(this.max));
+            filtered = filtered.slice(0, max);
         }
         if (filtered.length == 0) {
             console.error('There is no matching images');
@@ -194,11 +202,10 @@ export class SearchCommand extends Command {
         }
         if (this.print) {
             // Extract UUIDs and fetch metadata for --print mode
-            const uuidRegex = /([0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12})/i;
-            const uuids = filtered.map(r => r.filePath.match(uuidRegex)?.[1]).filter(Boolean);
+            const uuids = filtered.map(r => getResultUuid(r)).filter(Boolean);
             const metaMap = await getPhotoMetadata(uuids);
             console.log(filtered.map(r => {
-                const uuid = r.filePath.match(uuidRegex)?.[1];
+                const uuid = getResultUuid(r);
                 const meta = uuid ? metaMap.get(uuid) : null;
                 const metaStr = meta ? formatMeta(meta) : '';
                 return `${shortPath(r.filePath)}${metaStr}\n${r.score.toFixed(2)}`;
@@ -206,7 +213,7 @@ export class SearchCommand extends Command {
             return;
         }
         console.log('Showing results in your browser...');
-        await presentResults(this.query, filtered);
+        await presentResults(searchResponse.queryForDisplay, filtered);
     }
 }
 export class ListIndexCommand extends Command {
@@ -259,10 +266,12 @@ export class AlbumCommand extends Command {
     date = Option.String('--date', { description: 'Date range as start,end (e.g. 3/1/24,6/1/24).' });
     async execute() {
         const dateRange = this.date ? parseDateRange(this.date) : null;
-        const results = await search(this.query, {
-            maxResults: dateRange ? parseInt(this.max) * 10 : parseInt(this.max),
+        const max = parseInt(this.max);
+        const searchResponse = await searchWithMetadata(this.query, {
+            maxResults: dateRange ? max * 10 : max,
             targetDir: this.target,
         });
+        const results = searchResponse?.results;
         if (!results) {
             const target = this.target ?? '<target>';
             console.error(`No images in index, please run "sisi index ${target}" first.`);
@@ -271,7 +280,7 @@ export class AlbumCommand extends Command {
         if (dateRange) {
             const filtered = await filterResultsByDate(results, dateRange);
             results.length = 0;
-            results.push(...filtered.slice(0, parseInt(this.max)));
+            results.push(...filtered.slice(0, max));
         }
         if (results.length === 0) {
             console.error('There are no matching images.');

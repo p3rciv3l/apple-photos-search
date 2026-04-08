@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "regions": [
+    {
+      "id": "country-us",
+      "kind": "country",
+      "name": "United States",
+      "bounds": { "minLat": 24.3, "maxLat": 49.5, "minLon": -125.0, "maxLon": -66.9 }
+    },
+    {
+      "id": "us-ma",
+      "kind": "admin1",
+      "name": "Massachusetts",
+      "parentIds": ["country-us"],
+      "bounds": { "minLat": 41.18, "maxLat": 42.89, "minLon": -73.52, "maxLon": -69.85 }
+    },
+    {
+      "id": "us-ca",
+      "kind": "admin1",
+      "name": "California",
+      "parentIds": ["country-us"],
+      "bounds": { "minLat": 32.45, "maxLat": 42.05, "minLon": -124.48, "maxLon": -114.13 }
+    },
+    {
+      "id": "us-nc",
+      "kind": "admin1",
+      "name": "North Carolina",
+      "parentIds": ["country-us"],
+      "bounds": { "minLat": 33.75, "maxLat": 36.60, "minLon": -84.33, "maxLon": -75.38 }
+    },
+    {
+      "id": "us-sc",
+      "kind": "admin1",
+      "name": "South Carolina",
+      "parentIds": ["country-us"],
+      "bounds": { "minLat": 32.03, "maxLat": 35.22, "minLon": -83.36, "maxLon": -78.49 }
+    }
+  ],
+  "aliases": [
+    { "alias": "united states", "regionId": "country-us" },
+    { "alias": "united states of america", "regionId": "country-us" },
+    { "alias": "usa", "regionId": "country-us" },
+    { "alias": "us", "regionId": "country-us" },
+    { "alias": "u.s.", "regionId": "country-us" },
+    { "alias": "u.s.a.", "regionId": "country-us" },
+    { "alias": "massachusetts", "regionId": "us-ma" },
+    { "alias": "ma", "regionId": "us-ma" },
+    { "alias": "california", "regionId": "us-ca" },
+    { "alias": "ca", "regionId": "us-ca" },
+    { "alias": "north carolina", "regionId": "us-nc" },
+    { "alias": "nc", "regionId": "us-nc" },
+    { "alias": "south carolina", "regionId": "us-sc" },
+    { "alias": "sc", "regionId": "us-sc" }
+  ],
+  "sources": [
+    {
+      "name": "seed",
+      "description": "Base offline geo index seed. Compiled metro/admin data is merged onto this artifact."
+    }
+  ]
+}

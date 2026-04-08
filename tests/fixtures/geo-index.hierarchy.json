@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "regions": [
+    {
+      "id": "country-us",
+      "kind": "country",
+      "name": "United States",
+      "bounds": { "minLat": 24.3, "maxLat": 49.5, "minLon": -125.0, "maxLon": -66.9 }
+    },
+    {
+      "id": "us-ca",
+      "kind": "admin1",
+      "name": "California",
+      "parentIds": ["country-us"],
+      "bounds": { "minLat": 32.45, "maxLat": 42.05, "minLon": -124.48, "maxLon": -114.13 }
+    },
+    {
+      "id": "metro-sacramento",
+      "kind": "metro",
+      "name": "Sacramento Metro",
+      "parentIds": ["us-ca", "country-us"],
+      "bounds": { "minLat": 38.10, "maxLat": 39.10, "minLon": -122.70, "maxLon": -121.00 }
+    }
+  ],
+  "aliases": [
+    { "alias": "usa", "regionId": "country-us" },
+    { "alias": "united states", "regionId": "country-us" },
+    { "alias": "california", "regionId": "us-ca" },
+    { "alias": "sacramento", "regionId": "metro-sacramento" }
+  ]
+}

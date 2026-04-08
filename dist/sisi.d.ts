@@ -11,6 +11,10 @@ interface SearchOptions {
     targetDir?: string;
 }
 export declare function search(query: string, { maxResults, targetDir }: SearchOptions): Promise<SearchResult[] | undefined>;
+export declare function getIndexedImages(targetDir?: string): Promise<{
+    filePath: string;
+    embedding: any;
+}[]>;
 /**
  * Return the items in the index.
  */

@@ -71,17 +71,7 @@ export async function index(targetDir) {
 export async function search(query, { maxResults, targetDir }) {
     if (targetDir)
         targetDir = path.resolve(targetDir);
-    // List all the embeddings of images under targetDir from the index.
-    const index = await readIndexFromDisk();
-    const images = [];
-    for (const [dir, value] of index.entries()) {
-        if (targetDir && !dir.startsWith(targetDir)) // not match target dir
-            continue;
-        if (!value.files) // dir contains no files
-            continue;
-        for (const file of value.files)
-            images.push({ filePath: `${dir}/${file.name}`, embedding: file.embedding });
-    }
+    const images = await getIndexedImages(targetDir);
     if (images.length == 0)
         return;
     // As we are handling only one query, just load the model in main thread.
@@ -115,6 +105,21 @@ export async function search(query, { maxResults, targetDir }) {
         });
     }
     return results;
+}
+export async function getIndexedImages(targetDir) {
+    if (targetDir)
+        targetDir = path.resolve(targetDir);
+    const index = await readIndexFromDisk();
+    const images = [];
+    for (const [dir, value] of index.entries()) {
+        if (targetDir && !dir.startsWith(targetDir))
+            continue;
+        if (!value.files)
+            continue;
+        for (const file of value.files)
+            images.push({ filePath: `${dir}/${file.name}`, embedding: file.embedding });
+    }
+    return images;
 }
 /**
  * Return the items in the index.
